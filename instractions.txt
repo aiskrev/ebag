@@ -1,0 +1,32 @@
+Open the repository and read these files first:
+
+1. HANDOFF.md
+2. GAPS.md
+3. README.md
+4. The existing tests and Docker configuration
+
+Treat HANDOFF.md as the current project state and GAPS.md as the remaining-work backlog.
+
+Do not rebuild completed functionality from scratch.
+First validate the existing repository:
+
+- inspect the architecture
+- run the test suite
+- build the Docker images
+- start the stack
+- inspect failures and logs
+- verify the daily pipeline end to end
+
+Then fix the documented gaps in priority order.
+
+Continue autonomously where reasonable.
+Do not claim completion unless the relevant tests and runtime verification pass.
+Commit changes in small logical commits.
+Do not commit secrets, local databases, caches, generated artifacts, or credentials.
+
+At the end, update HANDOFF.md and GAPS.md with:
+- completed work
+- remaining limitations
+- test results
+- Docker/runtime results
+- exact commands for running the system
