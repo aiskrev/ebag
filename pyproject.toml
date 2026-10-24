@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "ebag-price-intelligence"
+version = "0.2.0"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0,<7"]
+[project.scripts]
+ebag = "ebag.cli:main"
+[tool.setuptools.packages.find]
+include = ["ebag*"]

@@ -1,0 +1,196 @@
+{
+  "excluded_categories": [
+    "alcohol",
+    "beer",
+    "wine",
+    "spirits"
+  ],
+  "excluded_products": [],
+  "excluded_keywords": [
+    "бира",
+    "вино",
+    "водка",
+    "уиски",
+    "ракия",
+    "ром",
+    "ликьор",
+    "beer",
+    "wine",
+    "vodka",
+    "whisky",
+    "алкохол"
+  ],
+  "preferred_categories": [
+    "fresh_meat",
+    "minced_meat",
+    "fish",
+    "eggs",
+    "fruit",
+    "vegetables",
+    "dairy",
+    "household"
+  ],
+  "notification_email": [
+    "aiskrev@abv.bg"
+  ],
+  "daily_crawl_time": "08:00",
+  "timezone": "Europe/Sofia",
+  "deal_thresholds": {
+    "strong_buy_score": 85,
+    "buy_score": 70,
+    "watch_score": 55,
+    "minimum_real_discount_for_email": 20,
+    "cooldown_days": 7,
+    "resend_drop_percent": 10,
+    "resend_score_increase": 15,
+    "strong_discount": 25,
+    "buy_discount": 20,
+    "minimum_30_discount": 15,
+    "near_min_percent": 5,
+    "watch_email_discount": 20,
+    "display_gap_percent": 15,
+    "reference_inflation_percent": 20,
+    "frequent_low_price_ratio": 0.7,
+    "continuous_promo_ratio": 0.8,
+    "short_reference_max_days": 3,
+    "short_expiry_days": 2,
+    "stock_up_min_expiry_days": 30
+  },
+  "history": {
+    "high_observations": 60,
+    "high_days": 90,
+    "medium_observations": 20,
+    "medium_days": 30,
+    "window_coverage": 0.65
+  },
+  "watchlist": [
+    {
+      "keywords": "айрян Верея",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "сирене Маджаров",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "кайма",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "пилешко филе",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "свински врат",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "свинско бонфиле",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "телешко",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "яйца",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "ябълки",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "круши",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "грозде",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "домати",
+      "excluded_brands": []
+    },
+    {
+      "keywords": "чушки",
+      "excluded_brands": []
+    }
+  ],
+  "crawl": {
+    "base_url": "https://ebag.bg",
+    "seeds": [
+      "https://ebag.bg/offers"
+    ],
+    "max_pages": 50,
+    "interval_seconds": 5,
+    "timeout_seconds": 25,
+    "user_agent": "eBagPriceIntelligence/0.2 (+personal price monitoring)",
+    "policy_reviewed": true,
+    "parser_validated": true,
+    "policy_reviewed_at": "2026-10-24",
+    "policy_review_days": 30,
+    "reviewed_store_commit": "c70996a08c47ad4ec2976e450226170c0e5e0e64",
+    "max_tracked_refresh": 100,
+    "category_seeds": [
+      "https://ebag.bg/categories/1700/products/json",
+      "https://ebag.bg/categories/1701/products/json",
+      "https://ebag.bg/categories/1707/products/json",
+      "https://ebag.bg/categories/5752/products/json",
+      "https://ebag.bg/categories/1705/products/json",
+      "https://ebag.bg/categories/418/products/json",
+      "https://ebag.bg/categories/1744/products/json",
+      "https://ebag.bg/categories/1210/products/json",
+      "https://ebag.bg/categories/1805/products/json",
+      "https://ebag.bg/categories/600/products/json",
+      "https://ebag.bg/categories/601/products/json",
+      "https://ebag.bg/categories/1601/products/json",
+      "https://ebag.bg/categories/4392/products/json",
+      "https://ebag.bg/categories/3936/products/json",
+      "https://ebag.bg/categories/284/products/json",
+      "https://ebag.bg/categories/2934/products/json",
+      "https://ebag.bg/categories/3709/products/json",
+      "https://ebag.bg/categories/1095/products/json",
+      "https://ebag.bg/categories/3698/products/json",
+      "https://ebag.bg/categories/1548/products/json",
+      "https://ebag.bg/categories/533/products/json",
+      "https://ebag.bg/categories/532/products/json",
+      "https://ebag.bg/categories/536/products/json"
+    ]
+  },
+  "manual_matches": [],
+  "storage_rules": {},
+  "category_priorities": {
+    "high": [
+      "fresh_meat",
+      "minced_meat",
+      "fish",
+      "eggs",
+      "fruit",
+      "vegetables",
+      "dairy"
+    ],
+    "medium": [
+      "rice",
+      "canned",
+      "legumes",
+      "frozen",
+      "bread"
+    ],
+    "household": [
+      "household"
+    ]
+  },
+  "score_weights": {
+    "historical_discount": 35,
+    "minimum_proximity": 20,
+    "normalized_price": 15,
+    "preferred_category": 10,
+    "watchlist": 10,
+    "high_confidence": 10,
+    "medium_confidence": 6,
+    "suspicious_penalty": 20,
+    "low_history_penalty": 15,
+    "short_expiry_penalty": 20
+  }
+}

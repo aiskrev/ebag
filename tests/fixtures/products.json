@@ -1,0 +1,13 @@
+[
+  {
+    "external_id": "DEMO-1",
+    "name": "Пилешко филе 600 г",
+    "brand": "Synthetic example",
+    "category": "fresh_meat",
+    "package": "600 г",
+    "price": "4.49",
+    "currency": "EUR",
+    "availability": "in_stock",
+    "url": "https://ebag.bg/product/synthetic-example"
+  }
+]

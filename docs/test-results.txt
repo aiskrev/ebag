@@ -1,0 +1,40 @@
+test_brand_mismatch (test_agent.MatchingTests.test_brand_mismatch) ... ok
+test_official_unit_price_without_package (test_agent.MatchingTests.test_official_unit_price_without_package) ... ok
+test_shrinkflation (test_agent.MatchingTests.test_shrinkflation) ... ok
+test_append_only_repository (test_agent.Tests.test_append_only_repository) ... ok
+test_blacklist (test_agent.Tests.test_blacklist) ... ok
+test_client_rejects_external_host (test_agent.Tests.test_client_rejects_external_host) ... ok
+test_cold_start_no_buy (test_agent.Tests.test_cold_start_no_buy) ... ok
+test_currency_and_bad_values (test_agent.Tests.test_currency_and_bad_values) ... ok
+test_empty_email_and_dedup (test_agent.Tests.test_empty_email_and_dedup) ... ok
+test_history_daily_dedup_current_excluded (test_agent.Tests.test_history_daily_dedup_current_excluded) ... ok
+test_identity_package_change (test_agent.Tests.test_identity_package_change) ... ok
+test_jsonld_availability_unknown (test_agent.Tests.test_jsonld_availability_unknown) ... ok
+test_synthetic_good_deal_and_fake_reference (test_agent.Tests.test_synthetic_good_deal_and_fake_reference) ... ok
+test_units_and_multipack (test_agent.Tests.test_units_and_multipack) ... ok
+test_unknown_and_variable_weight (test_agent.Tests.test_unknown_and_variable_weight) ... ok
+test_watch_bounds (test_agent.Tests.test_watch_bounds) ... ok
+test_approximate_weight_not_shrinkflation (test_live_contract.ApproximateWeightIdentity.test_approximate_weight_not_shrinkflation) ... ok
+test_weight_estimate_does_not_split_identity (test_live_contract.ApproximateWeightIdentity.test_weight_estimate_does_not_split_identity) ... ok
+test_multipack_doses_use_explicit_volume (test_live_contract.DosePhysicalQuantity.test_multipack_doses_use_explicit_volume) ... ok
+test_unknown_dose_weight_not_invented (test_live_contract.DosePhysicalQuantity.test_unknown_dose_weight_not_invented) ... ok
+test_all_20_products (test_live_contract.LiveContract.test_all_20_products) ... ok
+test_avocado_piece_not_name_weight (test_live_contract.LiveContract.test_avocado_piece_not_name_weight) ... ok
+test_categories (test_live_contract.LiveContract.test_categories) ... ok
+test_count_grams (test_live_contract.LiveContract.test_count_grams) ... ok
+test_multipack (test_live_contract.LiveContract.test_multipack) ... ok
+test_schema_drift (test_live_contract.LiveContract.test_schema_drift) ... ok
+test_tomato_and_mandarines (test_live_contract.LiveContract.test_tomato_and_mandarines) ... ok
+test_variable_fish (test_live_contract.LiveContract.test_variable_fish) ... ok
+test_continuous_promotion (test_operational.Operational.test_continuous_promotion) ... ok
+test_expired_product_never_buy (test_operational.Operational.test_expired_product_never_buy) ... ok
+test_render_escapes_names (test_operational.Operational.test_render_escapes_names) ... ok
+test_robots_deny_stops_request (test_operational.Operational.test_robots_deny_stops_request) ... ok
+test_smtp_ambiguous_not_retried (test_operational.Operational.test_smtp_ambiguous_not_retried) ... ok
+test_invalid_config_limits (test_operational.SettingsTests.test_invalid_config_limits) ... ok
+test_yaml_configuration (test_operational.SettingsTests.test_yaml_configuration) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 0.108s
+
+OK

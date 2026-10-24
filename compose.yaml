@@ -1,0 +1,22 @@
+services:
+  agent:
+    build: .
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    volumes:
+      - ebag-data:/app/data
+      - ./config:/app/config:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "ebag", "health"]
+      interval: 1h
+      timeout: 30s
+      start_period: 24h
+      retries: 2
+volumes:
+  ebag-data:

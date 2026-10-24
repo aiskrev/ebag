@@ -1,0 +1,3 @@
+# Handoff for Claude
+
+Read README.md, GAPS.md, docs/ACCESS.md and docs/VALIDATION.md. Source: ebag/. Tests: tests/. Run python -m pip install . then python -m unittest discover -s tests -v. 35 tests passed locally. Anonymous eBag integration was validated on 859 products on 2026-10-24. SMTP delivery, Docker build/start and permanent deployment remain unverified. No active daily deployment was created. Preserve append-only history, conservative cold-start scoring, blacklist, robots policy and SMTP deduplication. Never commit .env or credentials. Runtime SQLite data is untracked; real public JSON fixtures support regression testing. See GAPS.md for remaining requirements.

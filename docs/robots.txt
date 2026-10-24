@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: */search/?*refinementList
+Disallow: */search/?*sortBy
+Disallow: */search/?*toggle
+Disallow: */search/?*hierarchicalMenu
+
+Sitemap: https://ebag.bg/sitemap.xml
