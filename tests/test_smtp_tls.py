@@ -34,15 +34,22 @@ FISH = 580633
 class LocalSmtp(threading.Thread):
     """Minimal ESMTP server: refuses mail and AUTH until STARTTLS has happened."""
 
-    def __init__(self, cert, key):
+    def __init__(self, cert, key, port=0, implicit=False):
         super().__init__(daemon=True)
         self.tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.tls.load_cert_chain(cert, key)
-        self.listener = socket.create_server(('127.0.0.1', 0))
+        self.implicit = implicit
+        self.listener = socket.create_server(('127.0.0.1', port))
         self.port = self.listener.getsockname()[1]
         self.messages = []
         self.logins = []
         self.commands_before_tls = []
+
+    def stop(self):
+        # close() alone leaves a thread blocked in accept holding the port.
+        self.listener.shutdown(socket.SHUT_RDWR)
+        self.listener.close()
+        self.join(5)
 
     def run(self):
         while True:
@@ -60,7 +67,9 @@ class LocalSmtp(threading.Thread):
 
     def serve(self):
         conn = self.active
-        secure = False
+        if self.implicit:
+            conn = self.active = self.tls.wrap_socket(conn, server_side=True)
+        secure = self.implicit
         reader = conn.makefile('rb')
 
         def say(text):
@@ -111,7 +120,7 @@ class Pipeline(unittest.TestCase):
                         '-addext', 'subjectAltName=DNS:localhost', '-keyout', key, '-out', self.cert], check=True, capture_output=True)
         self.server = LocalSmtp(self.cert, key)
         self.server.start()
-        self.addCleanup(self.server.listener.close)
+        self.addCleanup(self.server.stop)
         self.env = {'SMTP_HOST': 'localhost', 'SMTP_PORT': str(self.server.port), 'SMTP_USERNAME': 'agent', 'SMTP_PASSWORD': 'test-only',
                     'SMTP_FROM': 'agent@example.test', 'SMTP_USE_TLS': 'true', 'NOTIFICATION_EMAIL': 'owner@example.test', 'SSL_CERT_FILE': self.cert}
         patcher = patch.dict(os.environ, self.env)

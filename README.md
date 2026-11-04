@@ -40,7 +40,10 @@ docker compose exec agent ebag smtp-test --send
 docker compose cp agent:/app/data/report.html ./report.html
 ```
 
-`smtp-test --send` действително изпраща тестово писмо до конфигурирания
+За abv.bg: `SMTP_HOST=smtp.abv.bg`, `SMTP_PORT=465`, пълен адрес като потребител и
+парола в единични кавички, за да не се тълкуват символи като `$`.
+
+`smtp-test --send` действително изпраща тестово писмо с данни от последния обход до конфигурирания
 получател. Приетото от SMTP писмо не доказва доставка до Inbox; проверете Spam.
 Получател по подразбиране: aiskrev@abv.bg.
 Отчетът съдържа търсене, watchlist и BUY филтри, unit prices, увереност,

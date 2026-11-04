@@ -1,8 +1,8 @@
-import argparse,json,os,sys,time
+import argparse,html,json,os,sys,time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from .core import now,prepare,history,evaluate
+from .core import now,prepare,history,evaluate,watch
 from .db import Repository
 from .crawler import Client
 from .notify import SMTP,deliver,operator_alert,pending,recipients,resolve
@@ -58,6 +58,27 @@ def run(c,db,source=None,send=False,output='data/report.json'):
     except Exception as exc:
         repo.conn.rollback();repo.finish(run_id,'failed',scanned,added,errors,{'error':str(exc)}); raise
     finally:repo.conn.close()
+
+def test_lines(db,report,c):
+    """Test mail shows real crawl output, marked so it cannot read as a deal alert."""
+    lines=['Тестово съобщение от eBag Price Intelligence. Това не е препоръка за покупка.']
+    repo=Repository(db)
+    last=repo.conn.execute("SELECT finished_at,products_scanned,parser_errors FROM crawl_runs WHERE status IN ('success','partial') AND json_extract(details_json,'$.source')='live' ORDER BY id DESC LIMIT 1").fetchone()
+    repo.conn.close()
+    if not last:return lines+['Все още няма успешен live обход.']
+    lines.append(f"Последен обход: {last['finished_at'][:16].replace('T',' ')} UTC, {last['products_scanned']} продукта, {last['parser_errors']} грешки при разчитане.")
+    try:items=json.loads(Path(report).read_text())
+    except FileNotFoundError:return lines
+    cheapest={}
+    for item in items:
+        p=item['product'];w=watch(p,c)
+        if not w or item['assessment']['excluded'] or p.get('normalized_price') is None:continue
+        best=cheapest.get(w['keywords'])
+        if best is None or p['normalized_price']<best['normalized_price']:cheapest[w['keywords']]=p
+    if cheapest:
+        lines.append('Най-ниска единична цена в момента за продуктите от watchlist. Това са само наблюдения, без историческа оценка:')
+        lines+=[f"{key}: {p['name']}, {p['price']:.2f} EUR ({p['normalized_price']:.2f} EUR/{p['unit']}) {p.get('url','')}" for key,p in cheapest.items()]
+    return lines
 
 def health(repo):
     last=repo.conn.execute("SELECT * FROM crawl_runs WHERE status<>'running' ORDER BY id DESC LIMIT 1").fetchone()
@@ -126,7 +147,8 @@ def dispatch(a,c):
     elif a.command=='smtp-test':
         if not a.send:raise SystemExit('Use --send to explicitly request a test message')
         try:
-            for recipient in recipients(c):SMTP().send(recipient,'eBag: проверка на email известията','Тестово съобщение от eBag Price Intelligence. Това не е препоръка за покупка.','<p>Тестово съобщение от eBag Price Intelligence.</p>')
+            lines=test_lines(a.db,a.output,c)
+            for recipient in recipients(c):SMTP().send(recipient,'eBag: проверка на email известията','\n\n'.join(lines),'<html><body>'+''.join('<p>'+html.escape(x)+'</p>' for x in lines)+'</body></html>')
         except Exception as exc:raise SystemExit(f'SMTP test failed: {exc}')
         print('SMTP accepted test message; check recipient inbox/spam')
     elif a.command=='notifications':

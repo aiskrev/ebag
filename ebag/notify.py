@@ -17,12 +17,13 @@ class SMTP:
         if os.environ.get('SMTP_USE_TLS','true').lower()!='true':raise RuntimeError('TLS must be enabled')
         msg=EmailMessage(); msg['From']=sender; msg['To']=recipient; msg['Subject']=subject; msg.set_content(text); msg.add_alternative(markup,subtype='html')
         port=int(os.environ.get('SMTP_PORT','587'))
-        cls=smtplib.SMTP_SSL if port==465 else smtplib.SMTP
-        try:s=cls(host,port,timeout=30)
+        # SMTP_SSL does not verify the server unless it is given this context.
+        context=ssl.create_default_context()
+        try:s=smtplib.SMTP_SSL(host,port,timeout=30,context=context) if port==465 else smtplib.SMTP(host,port,timeout=30)
         except (OSError,smtplib.SMTPException) as exc:raise NotSent(f'SMTP connect failed: {exc}') from exc
         with s:
             try:
-                if port!=465:s.starttls(context=ssl.create_default_context())
+                if port!=465:s.starttls(context=context)
                 if os.environ.get('SMTP_USERNAME'):s.login(os.environ['SMTP_USERNAME'],os.environ.get('SMTP_PASSWORD',''))
             except (OSError,smtplib.SMTPException) as exc:raise NotSent(f'SMTP TLS/login failed: {exc}') from exc
             s.send_message(msg)
