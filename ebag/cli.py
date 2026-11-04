@@ -2,7 +2,8 @@ import argparse,html,json,os,sys,time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from .core import now,prepare,history,evaluate,watch
+from . import summary as digest
+from .core import now,prepare,history,evaluate
 from .db import Repository
 from .crawler import Client
 from .notify import SMTP,deliver,operator_alert,pending,recipients,resolve
@@ -51,8 +52,13 @@ def run(c,db,source=None,send=False,output='data/report.json'):
             # The crawl already succeeded: a mail problem must not erase that fact.
             try:emails=deliver(repo,items,c,SMTP())
             except Exception as exc:email_error=str(exc) or type(exc).__name__
-        repo.finish(run_id,status,scanned,added,errors,{'emails':emails,'email_error':email_error,'source':'import' if source else 'live','coverage':client.stats if client else None,'parser_errors':samples[:20]})
-        result={'run':run_id,'status':status,'products':scanned,'errors':errors,'emails':emails,'email_error':email_error,'report':output}
+        summaries=0
+        if send:
+            # Sent on partial runs too: it reports the errors and proves the agent ran.
+            try:summaries=digest.send(repo,items,c,SMTP(),{'products':scanned,'errors':errors,'coverage':client.stats if client else None})
+            except Exception as exc:email_error=email_error or str(exc) or type(exc).__name__
+        repo.finish(run_id,status,scanned,added,errors,{'emails':emails,'summaries':summaries,'email_error':email_error,'source':'import' if source else 'live','coverage':client.stats if client else None,'parser_errors':samples[:20]})
+        result={'run':run_id,'status':status,'products':scanned,'errors':errors,'emails':emails,'summaries':summaries,'email_error':email_error,'report':output}
         print(json.dumps(result),flush=True)
         return result
     except Exception as exc:
@@ -69,15 +75,10 @@ def test_lines(db,report,c):
     lines.append(f"Последен обход: {last['finished_at'][:16].replace('T',' ')} UTC, {last['products_scanned']} продукта, {last['parser_errors']} грешки при разчитане.")
     try:items=json.loads(Path(report).read_text())
     except FileNotFoundError:return lines
-    cheapest={}
-    for item in items:
-        p=item['product'];w=watch(p,c)
-        if not w or item['assessment']['excluded'] or p.get('normalized_price') is None:continue
-        best=cheapest.get(w['keywords'])
-        if best is None or p['normalized_price']<best['normalized_price']:cheapest[w['keywords']]=p
+    cheapest=digest.cheapest_by_watch([(x.get('product_id'),x['product'],x['assessment']) for x in items],c)
     if cheapest:
         lines.append('Най-ниска единична цена в момента за продуктите от watchlist. Това са само наблюдения, без историческа оценка:')
-        lines+=[f"{key}: {p['name']}, {p['price']:.2f} EUR ({p['normalized_price']:.2f} EUR/{p['unit']}) {p.get('url','')}" for key,p in cheapest.items()]
+        lines+=[f"{key}: {p['name']}, {digest.price(p)} {p.get('url','')}" for key,(p,_) in cheapest.items()]
     return lines
 
 def health(repo):
@@ -111,7 +112,7 @@ def schedule(c,db,send,output):
 
 def main():
     parser=argparse.ArgumentParser(description='eBag Price Intelligence')
-    parser.add_argument('command',choices=['init','run','schedule','health','backup','report','smtp-test','notifications'])
+    parser.add_argument('command',choices=['init','run','schedule','health','backup','report','smtp-test','notifications','summary'])
     parser.add_argument('--config',default='config/preferences.yaml');parser.add_argument('--db',default=os.environ.get('DATABASE_PATH','data/ebag.sqlite3'))
     parser.add_argument('--import-file');parser.add_argument('--send',action='store_true');parser.add_argument('--output',default='data/report.json')
     parser.add_argument('--resolve',type=int,help='notification id to reconcile');parser.add_argument('--as',dest='outcome',choices=['sent','failed'],help='verdict after checking SMTP logs')
@@ -151,6 +152,18 @@ def dispatch(a,c):
             for recipient in recipients(c):SMTP().send(recipient,'eBag: проверка на email известията','\n\n'.join(lines),'<html><body>'+''.join('<p>'+html.escape(x)+'</p>' for x in lines)+'</body></html>')
         except Exception as exc:raise SystemExit(f'SMTP test failed: {exc}')
         print('SMTP accepted test message; check recipient inbox/spam')
+    elif a.command=='summary':
+        # From the latest report, without crawling: preview, or --send for today's digest.
+        repo=Repository(a.db)
+        last=repo.conn.execute("SELECT * FROM crawl_runs WHERE status IN ('success','partial') AND json_extract(details_json,'$.source')='live' ORDER BY id DESC LIMIT 1").fetchone()
+        if not last:raise SystemExit('No successful live crawl yet')
+        items=[(x['product_id'],x['product'],x['assessment']) for x in json.loads(Path(a.output).read_text())]
+        stats={'products':last['products_scanned'],'errors':last['parser_errors'],'coverage':json.loads(last['details_json']).get('coverage')}
+        if a.send:
+            try:print(f'Summaries sent: {digest.send(repo,items,c,SMTP(),stats)}')
+            except Exception as exc:raise SystemExit(f'Summary failed: {exc}')
+        else:print('\n\n'.join(digest.lines(items,c,stats,digest.history_days(repo),digest.local_today(c))))
+        repo.conn.close()
     elif a.command=='notifications':
         repo=Repository(a.db)
         if a.resolve is not None:

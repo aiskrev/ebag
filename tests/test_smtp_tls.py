@@ -162,7 +162,7 @@ class Pipeline(unittest.TestCase):
         self.seed_history(db, next(r for r in ROWS if r['id'] == FISH))
         result = self.crawl(db)
         self.assertEqual((result['status'], result['emails'], result['email_error']), ('success', 1, None))
-        self.assertEqual(self.server.logins, [[b'agent', b'test-only']])
+        self.assertEqual(self.server.logins, [[b'agent', b'test-only']] * 2, 'one login each for the deal and the digest')
         self.assertNotIn('MAIL', self.server.commands_before_tls)
         self.assertNotIn('AUTH', self.server.commands_before_tls)
         message = self.server.messages[0]
@@ -176,7 +176,8 @@ class Pipeline(unittest.TestCase):
         self.addCleanup(repo.conn.close)
         self.assertEqual(repo.conn.execute('SELECT status FROM notifications').fetchone()[0], 'sent')
         self.assertEqual(self.crawl(db)['emails'], 0, 'identical offer must not be sent twice')
-        self.assertEqual(len(self.server.messages), 1)
+        self.assertEqual(len(self.server.messages), 2, 'one deal and one digest, neither repeated')
+        self.assertIn('дневно резюме', self.server.messages[1]['Subject'])
 
     def test_untrusted_certificate_is_refused_and_keeps_the_crawl(self):
         db = self.dir + '/db.sqlite3'
@@ -192,8 +193,9 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(repo.conn.execute('SELECT status FROM notifications').fetchone()[0], 'failed')
         # Nothing left the agent, so the offer goes out once mail works again.
         os.environ['SSL_CERT_FILE'] = self.cert
-        self.assertEqual(self.crawl(db)['emails'], 1)
-        self.assertEqual(len(self.server.messages), 1)
+        result = self.crawl(db)
+        self.assertEqual((result['emails'], result['summaries']), (1, 1))
+        self.assertEqual(len(self.server.messages), 2)
 
     def test_unreachable_server_is_not_marked_uncertain(self):
         db = self.dir + '/db.sqlite3'
