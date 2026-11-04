@@ -189,8 +189,8 @@ class Pipeline(unittest.TestCase):
     def test_unreachable_server_is_not_marked_uncertain(self):
         db = self.dir + '/db.sqlite3'
         self.seed_history(db, next(r for r in ROWS if r['id'] == FISH))
-        self.server.listener.close()
-        os.environ['SMTP_PORT'] = str(self.server.port)
+        with socket.create_server(('127.0.0.1', 0)) as free:
+            os.environ['SMTP_PORT'] = str(free.getsockname()[1])
         self.assertIn('SMTP connect failed', self.crawl(db)['email_error'])
         repo = Repository(db)
         self.addCleanup(repo.conn.close)
