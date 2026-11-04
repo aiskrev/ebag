@@ -1,30 +1,53 @@
-# Проверки — 24.10.2026
+# Проверки
 
-## Успешни проверки
+## 04.11.2026
 
-- 35 unittest теста: normalization, multipack, variable weight, currencies,
-  blacklist, daily dedup, cold-start restrictions, matching/shrinkflation,
-  anonymous eBag schema fixtures, expired products, continuous promotion,
-  ambiguous SMTP result, robots denial, configuration and HTML escaping.
+Първа проверка на реалния Docker stack (Docker 29.9.2, Windows 11, WSL2).
+
+### Успешни
+
+- 74 unittest теста в python:3.12-slim. Резултат: test-results.txt.
+- `docker compose build` и `up`: контейнерът стартира с read-only файлова
+  система, `cap_drop: ALL`, non-root потребител и named volume.
+- `health`, `report`, `notifications`, `smtp-test`, `backup` работят до scheduler-а.
+  Без SMTP настройки `smtp-test` завършва с ясна грешка.
+- Втори `ebag schedule` се отказва. Рестартът освобождава lock-овете.
+- Реален scheduler процес срещу затворената защита, с отделна база: slot
+  `blocked_review`, причина в DB, 0 наблюдения, 0 страници с продукти.
+- Целият pipeline след crawl-а (`cli.run`, оценка, `deliver`, SMTP) срещу локален
+  STARTTLS сървър: AUTH и MAIL само след TLS, multipart писмо, кирилица в темата,
+  без дублиране. Недоверен сертификат се отказва и паролата не стига до сървъра.
+
+### Открити при първото пускане и поправени
+
+- Scheduler-ът държеше lock постоянно: `smtp-test`, `report` и `run` спираха с
+  „Another instance holds database lock“. Документираното възстановяване с
+  `ebag run --send` не беше възможно при работещ контейнер.
+- Първият неуспех изразходваше деня, дори при временна мрежова грешка.
+- Логовете на scheduler-а стояха в буфера (липсваше PYTHONUNBUFFERED).
+- Работещ crawl изглеждаше като срив в health.
+- Email грешка маркираше crawl-а failed и губеше frontier.
+- Един лош продукт отменяше всички наблюдения за деня.
+- Release проверката четеше страница от 1-часовия кеш.
+
+### Непроверено
+
+- **Live crawl с тази версия не е изпълнен.** Новият storefront release не е
+  записан като прегледан, затова parser-ът не е проверен срещу реален отговор.
+  Единственото наблюдение: `main.js` на новия release още съдържа използваните
+  endpoint-и и полета. Това не доказва, че отговорите са непроменени.
+- Реална SMTP доставка: няма credentials, не е изпращан реален email.
+- Дневен цикъл в 08:00 и многодневна работа: не са наблюдавани.
+- Постоянен хост: няма.
+
+## 24.10.2026
+
+- 35 unittest теста.
 - Реален crawl: run 1 — 40 продукта; run 2 — 859 продукта от 50 страници,
   247.65 секунди, status=success; run 3 — 859 продукта с HTTP cache, success.
-- Текущият adapter е проверен повторно offline срещу всички 859 реални
-  response продукта: всички се parse-ват; неизвестните физически количества
-  остават null и не получават BUY. Това не създава нови live наблюдения.
-- SQLite PRAGMA integrity_check: ok.
-- SQLite online backup: успешно.
-- Health: database=true, live_crawler_healthy=true, smtp_configured=false.
-- HTML отчет и JSON данни са генерирани.
+- Adapter-ът е проверен offline срещу всички 859 реални продукта: всички се
+  parse-ват; неизвестните физически количества остават null и не получават BUY.
+- SQLite integrity_check и online backup: успешни.
 
-Дневните observations са от един календарен ден. Повторенията не се броят
-като отделни дни и не създават фалшива историческа увереност.
-
-## Непроверени външни зависимости
-
-- Реална SMTP доставка: липсват SMTP настройки; няма изпратени писма.
-- Docker image build и compose startup: Docker не е наличен в средата.
-- Няма разположен 24/7 хост или активиран външен scheduler.
-- Няма данни от бъдещи дни, затова няма доказан многодневен live soak test.
-
-Включеният data/ebag.sqlite3 съдържа реалните наблюдения. demo.sqlite3 е
-отделен синтетичен пример. test-results.txt съдържа пълния резултат от тестовете.
+Базата от тази проверка не е в хранилището. Наблюденията са от един ден и
+не създават историческа увереност.
