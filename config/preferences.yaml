@@ -132,6 +132,8 @@
     "policy_review_days": 30,
     "reviewed_store_commit": "c70996a08c47ad4ec2976e450226170c0e5e0e64",
     "max_tracked_refresh": 100,
+    "on_release_change": "stop",
+    "max_parse_error_ratio": 0.05,
     "category_seeds": [
       "https://ebag.bg/categories/1700/products/json",
       "https://ebag.bg/categories/1701/products/json",
@@ -157,6 +159,15 @@
       "https://ebag.bg/categories/532/products/json",
       "https://ebag.bg/categories/536/products/json"
     ]
+  },
+  "schedule": {
+    "max_attempts": 3,
+    "retry_minutes": 60
+  },
+  "backup": {
+    "enabled": true,
+    "dir": "data/backups",
+    "keep": 7
   },
   "manual_matches": [],
   "storage_rules": {},
