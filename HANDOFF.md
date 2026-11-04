@@ -5,25 +5,25 @@ docs/VALIDATION.md. Код: ebag/. Тестове: tests/.
 
 ## Текущо състояние
 
-**Live режимът е спрян от защитата за нов storefront release и агентът още не
-събира данни.** eBag е пуснал release `2d865171801aba36d91ca62de3454d1898093484`;
-в config е записан прегледаният `c70996a08c47ad4ec2976e450226170c0e5e0e64`.
-robots.txt е идентичен, а условията пазят същата дата на актуализация (24.09.2026)
-и са прочетени наново (docs/ACCESS.md), но прегледът НЕ е записан в config и
-parser-ът НЕ е проверен с
-live crawl срещу новия release. Записването изисква решение на собственика.
+**Live режимът работи.** Собственикът одобри записа на прегледа на release
+`2d865171801aba36d91ca62de3454d1898093484` на 04.11. Реалният crawl в Docker мина:
+850 продукта, 50 страници, 256.5 s, 0 parser грешки, `health` зелен, първи ден
+история в Docker volume `ebag_ebag-data`. JSON полетата са същите като в fixtures.
 
-Следващата стъпка след това решение:
+Агентът НЕ работи постоянно: контейнерът е спрян, защото задача беше един crawl
+и папката е временна. Няма BUY препоръки, докато не се натрупа история.
+
+При следващ нов release (`blocked_review` в `ebag health`):
 
 ```bash
-# config/preferences.yaml: crawl.policy_reviewed_at = датата на прегледа,
-#                          crawl.reviewed_store_commit = новият release
+# Прегледайте robots, условията и отговорите, после обновете в
+# config/preferences.yaml: crawl.policy_reviewed_at, crawl.reviewed_store_commit
 docker compose up --build -d
-docker compose exec agent ebag run --send
 docker compose exec agent ebag health
 ```
 
-Ако crawl-ът мине, запишете броя продукти и parser грешките в docs/VALIDATION.md.
+Рестартът с обновен config изпълнява днешния блокиран slot автоматично.
+Slot, записан от версия преди 04.11, се възстановява с `ebag run --send`.
 
 ## Завършено в тази сесия
 
@@ -51,6 +51,7 @@ docker compose exec agent ebag health
 - Docker: build, старт, read-only файлова система, рестарт, отказ на втори
   scheduler и backup са проверени. Контейнерът е спрян в края на сесията.
 - Scheduler процес срещу затворената защита: `blocked_review`, 0 наблюдения.
+- Реален crawl: 850 продукта, 0 parser грешки, схемата е същата като във fixtures.
 - SMTP: целият pipeline е проверен срещу локален STARTTLS сървър с истинска
   проверка на сертификата. Реален email не е изпращан.
 
