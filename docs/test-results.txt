@@ -33,8 +33,70 @@ test_robots_deny_stops_request (test_operational.Operational.test_robots_deny_st
 test_smtp_ambiguous_not_retried (test_operational.Operational.test_smtp_ambiguous_not_retried) ... ok
 test_invalid_config_limits (test_operational.SettingsTests.test_invalid_config_limits) ... ok
 test_yaml_configuration (test_operational.SettingsTests.test_yaml_configuration) ... ok
+test_alert_does_not_affect_deal_cooldown (test_ops.Alerts.test_alert_does_not_affect_deal_cooldown) ... ok
+test_alert_failure_never_raises (test_ops.Alerts.test_alert_failure_never_raises) ... ok
+test_alert_once_per_kind_per_day (test_ops.Alerts.test_alert_once_per_kind_per_day) ... ok
+test_rotation_keeps_newest_and_restores (test_ops.Backups.test_rotation_keeps_newest_and_restores) ... ok
+test_release_policy_values (test_ops.Configuration.test_release_policy_values) ... ok
+test_schedule_and_backup_limits (test_ops.Configuration.test_schedule_and_backup_limits) ... ok
+test_one_bad_listing_row_is_tolerated_and_counted (test_ops.Crawler.test_one_bad_listing_row_is_tolerated_and_counted) ... ok
+test_release_change_stops_by_default (test_ops.Crawler.test_release_change_stops_by_default) ... ok
+test_release_check_bypasses_cache (test_ops.Crawler.test_release_check_bypasses_cache) ... ok
+test_schema_drift_across_many_rows_stops (test_ops.Crawler.test_schema_drift_across_many_rows_stops) ... ok
+test_warn_mode_continues_and_reports_drift (test_ops.Crawler.test_warn_mode_continues_and_reports_drift) ... ok
+test_warn_mode_still_honours_review_expiry (test_ops.Crawler.test_warn_mode_still_honours_review_expiry) ... ok
+test_crawl_in_progress_is_not_a_failure (test_ops.Health.test_crawl_in_progress_is_not_a_failure) ... ok
+test_failure_is_visible_but_recent_success_still_counts (test_ops.Health.test_failure_is_visible_but_recent_success_still_counts) ... ok
+test_import_never_makes_live_health_green (test_ops.Health.test_import_never_makes_live_health_green) ... ok
+test_stale_success_is_unhealthy (test_ops.Health.test_stale_success_is_unhealthy) ... ok
+test_lock_excludes_second_holder_and_is_released (test_ops.Locks.test_lock_excludes_second_holder_and_is_released) ... ok
+test_operator_commands_work_while_scheduler_lock_is_held (test_ops.Locks.test_operator_commands_work_while_scheduler_lock_is_held)
+The bug found in Docker: smtp-test/report/run failed behind the scheduler. ... ok
+test_failed_verdict_allows_exactly_one_resend (test_ops.Reconcile.test_failed_verdict_allows_exactly_one_resend) ... ok
+test_only_pending_rows_can_change (test_ops.Reconcile.test_only_pending_rows_can_change) ... ok
+test_sent_verdict_never_resends (test_ops.Reconcile.test_sent_verdict_never_resends) ... ok
+test_email_failure_does_not_fail_the_crawl (test_ops.RunFlow.test_email_failure_does_not_fail_the_crawl) ... ok
+test_import_cannot_send_and_leaves_no_trace (test_ops.RunFlow.test_import_cannot_send_and_leaves_no_trace) ... ok
+test_isolated_bad_record_keeps_observations_and_blocks_email (test_ops.RunFlow.test_isolated_bad_record_keeps_observations_and_blocks_email) ... ok
+test_widespread_parse_failure_is_rejected_and_rolled_back (test_ops.RunFlow.test_widespread_parse_failure_is_rejected_and_rolled_back) ... ok
+test_manual_run_in_progress_does_not_consume_attempt (test_ops.Slots.test_manual_run_in_progress_does_not_consume_attempt) ... ok
+test_partial_run_raises_alert_without_retry (test_ops.Slots.test_partial_run_raises_alert_without_retry) ... ok
+ok
+test_process_death_mid_run_is_retried (test_ops.Slots.test_process_death_mid_run_is_retried) ... ok
+ok
+ok
+test_success_runs_once_per_day (test_ops.Slots.test_success_runs_once_per_day) ... ok
+ok
+test_v1_slot_table_is_migrated (test_ops.Slots.test_v1_slot_table_is_migrated) ... ok
+test_waits_for_configured_time (test_ops.Slots.test_waits_for_configured_time) ... ok
+test_port_465_passes_a_verifying_context (test_smtp_implicit_tls.ContextIsVerifying.test_port_465_passes_a_verifying_context) ... ok
+test_password_never_reaches_an_unverified_server (test_smtp_implicit_tls.ImplicitTls.test_password_never_reaches_an_unverified_server) ... ok
+test_trusted_server_receives_mail (test_smtp_implicit_tls.ImplicitTls.test_trusted_server_receives_mail) ... ok
+test_lists_cheapest_watchlist_item_and_is_marked_as_test (test_smtp_implicit_tls.TestMessage.test_lists_cheapest_watchlist_item_and_is_marked_as_test) ... ok
+test_without_live_crawl_says_so (test_smtp_implicit_tls.TestMessage.test_without_live_crawl_says_so) ... ok
+test_deal_reaches_the_server_once_over_verified_tls (test_smtp_tls.Pipeline.test_deal_reaches_the_server_once_over_verified_tls) ... ok
+test_operator_alert_uses_the_same_transport (test_smtp_tls.Pipeline.test_operator_alert_uses_the_same_transport) ... ok
+test_unreachable_server_is_not_marked_uncertain (test_smtp_tls.Pipeline.test_unreachable_server_is_not_marked_uncertain) ... ok
+test_untrusted_certificate_is_refused_and_keeps_the_crawl (test_smtp_tls.Pipeline.test_untrusted_certificate_is_refused_and_keeps_the_crawl) ... ok
+test_limits (test_summary.Configuration.test_limits) ... ok
+test_can_be_disabled (test_summary.Sending.test_can_be_disabled) ... ok
+test_failed_send_is_not_recorded_so_a_later_run_can_retry (test_summary.Sending.test_failed_send_is_not_recorded_so_a_later_run_can_retry) ... ok
+test_names_are_escaped_in_html (test_summary.Sending.test_names_are_escaped_in_html) ... ok
+test_once_per_local_day (test_summary.Sending.test_once_per_local_day) ... ok
+test_summary_does_not_trigger_deal_cooldown (test_summary.Sending.test_summary_does_not_trigger_deal_cooldown) ... ok
+test_counts_only_real_deals (test_summary.Text.test_counts_only_real_deals) ... ok
+test_drops_are_sorted_filtered_and_limited (test_summary.Text.test_drops_are_sorted_filtered_and_limited) ... ok
+test_first_day_has_nothing_to_compare (test_summary.Text.test_first_day_has_nothing_to_compare) ... ok
+test_mature_history_without_deals_says_so (test_summary.Text.test_mature_history_without_deals_says_so) ... ok
+test_never_reads_as_a_recommendation (test_summary.Text.test_never_reads_as_a_recommendation) ... ok
+test_one_day_of_history_is_singular (test_summary.Text.test_one_day_of_history_is_singular) ... ok
+test_parser_errors_are_reported (test_summary.Text.test_parser_errors_are_reported) ... ok
+test_review_expiry_warning_only_near_the_end (test_summary.Text.test_review_expiry_warning_only_near_the_end) ... ok
+test_units_are_never_compared_with_each_other (test_summary.Text.test_units_are_never_compared_with_each_other)
+Found on real data: 0.47 EUR/piece beat every price per kg. ... ok
+test_watchlist_uses_cheapest_and_hides_excluded (test_summary.Text.test_watchlist_uses_cheapest_and_hides_excluded) ... ok
 
 ----------------------------------------------------------------------
-Ran 35 tests in 0.108s
+Ran 95 tests in 5.134s
 
 OK

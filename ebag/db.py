@@ -11,14 +11,21 @@ CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY, product_id INTE
 CREATE INDEX IF NOT EXISTS idx_notification_product_recipient ON notifications(product_id,recipient,sent_at);
 CREATE TABLE IF NOT EXISTS product_matches(id INTEGER PRIMARY KEY, source_product_id INTEGER REFERENCES products(id), candidate_product_id INTEGER REFERENCES products(id), match_type TEXT, match_confidence REAL, reviewed INTEGER DEFAULT 0, created_at TEXT);
 CREATE TABLE IF NOT EXISTS system_health(id INTEGER PRIMARY KEY, checked_at TEXT, last_successful_crawl TEXT, database_status TEXT, email_status TEXT, crawler_status TEXT, details_json TEXT);
+CREATE TABLE IF NOT EXISTS scheduled_slots(day TEXT PRIMARY KEY, status TEXT);
 '''
+SLOT_COLUMNS=(('attempts','INTEGER DEFAULT 0'),('next_attempt_at','TEXT'),('review_key','TEXT'),('detail','TEXT'))
 class Repository:
     def __init__(self,path):
         Path(path).parent.mkdir(parents=True,exist_ok=True)
-        self.conn=sqlite3.connect(path); self.conn.row_factory=sqlite3.Row
+        self.conn=sqlite3.connect(path,timeout=30); self.conn.row_factory=sqlite3.Row
         self.conn.execute('PRAGMA foreign_keys=ON'); self.conn.execute('PRAGMA journal_mode=WAL')
         self.conn.executescript(SCHEMA)
-        self.conn.execute('INSERT OR IGNORE INTO schema_migrations VALUES(1,?)',(now(),)); self.conn.commit()
+        self.conn.execute('INSERT OR IGNORE INTO schema_migrations VALUES(1,?)',(now(),))
+        # v2: migrations/002_scheduler.sql. ALTER has no IF NOT EXISTS, so check first.
+        have={r[1] for r in self.conn.execute('PRAGMA table_info(scheduled_slots)')}
+        for name,kind in SLOT_COLUMNS:
+            if name not in have:self.conn.execute(f'ALTER TABLE scheduled_slots ADD COLUMN {name} {kind}')
+        self.conn.execute('INSERT OR IGNORE INTO schema_migrations VALUES(2,?)',(now(),)); self.conn.commit()
     def start(self):
         cur=self.conn.execute('INSERT INTO crawl_runs(started_at,status) VALUES(?,?)',(now(),'running')); self.conn.commit(); return cur.lastrowid
     def save(self,p,run):
