@@ -3,6 +3,8 @@ from datetime import datetime,timedelta
 from email.message import EmailMessage
 from typing import Protocol
 from .core import now,watch
+class NotSent(RuntimeError):
+    """Failed before the message left us, so it is safe to try again on a later run."""
 class Provider(Protocol):
     def send(self,recipient:str,subject:str,text:str,markup:str)->None:...
 class SMTP:
@@ -16,9 +18,13 @@ class SMTP:
         msg=EmailMessage(); msg['From']=sender; msg['To']=recipient; msg['Subject']=subject; msg.set_content(text); msg.add_alternative(markup,subtype='html')
         port=int(os.environ.get('SMTP_PORT','587'))
         cls=smtplib.SMTP_SSL if port==465 else smtplib.SMTP
-        with cls(host,port,timeout=30) as s:
-            if port!=465:s.starttls(context=ssl.create_default_context())
-            if os.environ.get('SMTP_USERNAME'):s.login(os.environ['SMTP_USERNAME'],os.environ.get('SMTP_PASSWORD',''))
+        try:s=cls(host,port,timeout=30)
+        except (OSError,smtplib.SMTPException) as exc:raise NotSent(f'SMTP connect failed: {exc}') from exc
+        with s:
+            try:
+                if port!=465:s.starttls(context=ssl.create_default_context())
+                if os.environ.get('SMTP_USERNAME'):s.login(os.environ['SMTP_USERNAME'],os.environ.get('SMTP_PASSWORD',''))
+            except (OSError,smtplib.SMTPException) as exc:raise NotSent(f'SMTP TLS/login failed: {exc}') from exc
             s.send_message(msg)
 def recipients(c):
     return [x.strip() for x in (os.environ.get('NOTIFICATION_EMAIL') or ','.join(c['notification_email'])).split(',') if x.strip()]
@@ -86,8 +92,9 @@ def deliver(repo,items,c,provider):
             repo.conn.execute("INSERT INTO notifications(product_id,sent_at,notification_type,price_at_notification,deal_score,recipient,message_hash,status) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(recipient,message_hash) DO UPDATE SET sent_at=excluded.sent_at,deal_score=excluded.deal_score,status='sending'",(pid,p['observed_at'],d['classification'],p['price'],d['score'],recipient,fp,'sending'))
         repo.conn.commit()
         try:provider.send(recipient,'eBag: добри цени според собствената история','\n\n'.join(lines),'<html><body>'+''.join('<p>'+html.escape(x)+'</p>' for x in lines)+'</body></html>')
-        except Exception:
-            for *_,fp in selected:repo.conn.execute("UPDATE notifications SET status='uncertain' WHERE recipient=? AND message_hash=?",(recipient,fp))
+        except Exception as exc:
+            status='failed' if isinstance(exc,NotSent) else 'uncertain'
+            for *_,fp in selected:repo.conn.execute("UPDATE notifications SET status=? WHERE recipient=? AND message_hash=?",(status,recipient,fp))
             repo.conn.commit();raise
         for *_,fp in selected:repo.conn.execute("UPDATE notifications SET status='sent' WHERE recipient=? AND message_hash=?",(recipient,fp))
         repo.conn.commit();sent+=1
