@@ -1,8 +1,12 @@
-"""Conservative public JSON-LD adapter. Live eBag compatibility is NOT validated."""
+"""Polite HTTP client and crawl budget for the anonymous public eBag storefront."""
 import hashlib,json,time,urllib.request,urllib.error,urllib.parse,urllib.robotparser
 from html.parser import HTMLParser
 from pathlib import Path
 class PolicyError(RuntimeError): pass
+class ReviewRequired(PolicyError):
+    """A person must re-review terms/parser; retrying before that is pointless."""
+class AccessDenied(PolicyError):
+    """The store said stop (401/403/429/challenge); never retried the same day."""
 class Scripts(HTMLParser):
     def __init__(self): super().__init__(); self.capture=False; self.buf=[]; self.scripts=[]; self.links=[]
     def handle_starttag(self,tag,attrs):
@@ -19,12 +23,13 @@ class Client:
     def __init__(self,c,cache='data/cache'):
         self.c=c['crawl']; self.base=self.c['base_url']; self.last=0; self.root=Path(cache); self.root.mkdir(parents=True,exist_ok=True)
         self.opener=urllib.request.build_opener(NoRedirect()); self.robot=None
-    def get(self,url,policy=False):
+        self.release_drift=None; self.parse_errors=[]
+    def get(self,url,policy=False,fresh=False):
         u=urllib.parse.urlsplit(url)
         if u.scheme!='https' or u.netloc!='ebag.bg' or u.username or u.password: raise PolicyError('Only canonical HTTPS ebag.bg URLs allowed')
         if not policy and (self.robot is None or not self.robot.can_fetch(self.c['user_agent'],url)): raise PolicyError('Robots policy denies URL')
         key=hashlib.sha256(url.encode()).hexdigest(); f=self.root/key
-        if not policy and f.exists() and time.time()-f.stat().st_mtime<3600:return f.read_text()
+        if not policy and not fresh and f.exists() and time.time()-f.stat().st_mtime<3600:return f.read_text()
         for attempt in range(3):
             time.sleep(max(0,self.c['interval_seconds']-(time.monotonic()-self.last)))
             self.last=time.monotonic()
@@ -34,11 +39,11 @@ class Client:
                     data=response.read(4_000_001)
                     if len(data)>4_000_000:raise PolicyError('Response size limit')
                     text=data.decode('utf-8')
-                    if any(x in text.casefold() for x in ('captcha','cf-chl-','verify you are human')): raise PolicyError('Challenge encountered; stopping')
+                    if any(x in text.casefold() for x in ('captcha','cf-chl-','verify you are human')): raise AccessDenied('Challenge encountered; stopping')
                     if not policy:f.write_text(text)
                     return text
             except urllib.error.HTTPError as e:
-                if e.code in (401,403,429): raise PolicyError(f'Access/rate limit {e.code}; stopping') from e
+                if e.code in (401,403,429): raise AccessDenied(f'Access/rate limit {e.code}; stopping') from e
                 if e.code<500 or attempt==2:raise
             except (TimeoutError,urllib.error.URLError):
                 if attempt==2:raise
@@ -53,18 +58,32 @@ class Client:
         delay=self.robot.crawl_delay(self.c['user_agent']);rate=self.robot.request_rate(self.c['user_agent'])
         if delay:self.c['interval_seconds']=max(delay,self.c['interval_seconds'])
         if rate:self.c['interval_seconds']=max(rate.seconds/rate.requests,self.c['interval_seconds'])
-        if not self.c['policy_reviewed']:raise PolicyError('Terms review not completed')
+        if not self.c['policy_reviewed']:raise ReviewRequired('Terms review not completed')
         age=(date.today()-date.fromisoformat(self.c['policy_reviewed_at'])).days
-        if not 0<=age<=self.c.get('policy_review_days',30):raise PolicyError('Terms review expired; re-review public terms')
-        terms=self.get(self.base+'/terms')
+        if not 0<=age<=self.c.get('policy_review_days',30):raise ReviewRequired('Terms review expired; re-review public terms')
+        # Always fresh: a cached page would hide a release that happened in the last hour.
+        terms=self.get(self.base+'/terms',fresh=True)
         # This detects storefront releases, not all dynamic terms edits. TTL also applies.
         match=re.search(r'window.STORE_COMMIT_HASH\s*=\s*"([a-f0-9]+)"',terms)
-        if not match or match[1]!=self.c.get('reviewed_store_commit'):raise PolicyError('Storefront release changed; inspect terms and parser')
-        if not self.c['parser_validated']:raise PolicyError('Parser not validated')
+        if not match:raise ReviewRequired('Storefront release marker missing; inspect terms and parser')
+        if match[1]!=self.c.get('reviewed_store_commit'):
+            if self.c.get('on_release_change','stop')!='warn':raise ReviewRequired(f'Storefront release changed to {match[1]}; inspect terms and parser')
+            self.release_drift=match[1]
+        if not self.c['parser_validated']:raise ReviewRequired('Parser not validated')
     def save_state(self):
         temp=self.state_path.with_suffix('.tmp');temp.write_text(json.dumps(self.pending_frontier));temp.replace(self.state_path)
-    def collect(self,tracked_ids=()):
+    def adapt_or_record(self,raw):
+        """One malformed product must not cost the whole day of observations."""
         from .ebag_source import adapt
+        try:return adapt(raw)
+        except (KeyError,ValueError,TypeError,AttributeError,ArithmeticError) as exc:
+            self.parse_errors.append({'id':raw.get('id') if isinstance(raw,dict) else None,'error':repr(exc)[:200]})
+            return None
+    def check_drift(self,parsed):
+        """Isolated bad rows are tolerated; widespread failure means the schema moved."""
+        failed=len(self.parse_errors);ratio=self.c.get('max_parse_error_ratio',.05)
+        if failed>=5 and failed>ratio*(failed+parsed):raise PolicyError(f'Listing schema drift: {failed} products failed to parse')
+    def collect(self,tracked_ids=()):
         self.check_policy();products={};page_errors=[]
         seeds=[self.base+'/categories/offers-products/json?mode=all_offers']+list(self.c.get('category_seeds',[]))
         # Each category seed gets a first page before additional pagination.
@@ -79,7 +98,8 @@ class Client:
             payload=json.loads(self.get(url))
             if not isinstance(payload,dict) or not isinstance(payload.get('results'),list):raise PolicyError('Listing schema drift')
             for raw in payload['results']:
-                p=adapt(raw);products[p['external_id']]=p
+                p=self.adapt_or_record(raw)
+                if p:products[p['external_id']]=p
             nxt=payload.get('next')
             if nxt:
                 target=urllib.parse.urljoin(url,nxt)
@@ -96,8 +116,10 @@ class Client:
             except urllib.error.HTTPError as exc:
                 if exc.code==404:page_errors.append({'product_id':pid,'status':404});continue
                 raise
-            p=adapt(payload);products[p['external_id']]=p
-        self.stats={'listing_pages':page_count,'listing_truncated':remaining,'tracked_pending':max(0,len(ids)-refresh_limit),'missing_products':page_errors}
+            p=self.adapt_or_record(payload)
+            if p:products[p['external_id']]=p
+        self.check_drift(len(products))
+        self.stats={'listing_pages':page_count,'listing_truncated':remaining,'tracked_pending':max(0,len(ids)-refresh_limit),'missing_products':page_errors,'parse_errors':self.parse_errors[:20],'parse_error_count':len(self.parse_errors),'release_drift':self.release_drift}
         if not products:raise PolicyError('No products parsed; crawl is not successful')
         return list(products.values())
 

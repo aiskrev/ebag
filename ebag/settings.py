@@ -27,6 +27,12 @@ def load(path):
         v=cr.get(key)
         if isinstance(v,bool) or not isinstance(v,(int,float)) or not low<=v<=high:raise ValueError('Invalid crawl limit '+key)
     if cr['base_url']!='https://ebag.bg':raise ValueError('Unsupported base URL')
+    if cr.get('on_release_change','stop') not in ('stop','warn'):raise ValueError('Invalid crawl on_release_change')
+    if not 0<=cr.get('max_parse_error_ratio',.05)<=1:raise ValueError('Invalid crawl max_parse_error_ratio')
+    sc=c.get('schedule',{});bk=c.get('backup',{})
+    if not isinstance(sc,dict) or not isinstance(bk,dict):raise ValueError('Invalid schedule/backup section')
+    for name,value,low,high in [('max_attempts',sc.get('max_attempts',3),1,10),('retry_minutes',sc.get('retry_minutes',60),5,720),('keep',bk.get('keep',7),1,365)]:
+        if isinstance(value,bool) or not isinstance(value,int) or not low<=value<=high:raise ValueError('Invalid limit '+name)
     if not 0<=th['watch_score']<=th['buy_score']<=th['strong_buy_score']<=100:raise ValueError('Threshold order invalid')
     for key in ('minimum_real_discount_for_email','buy_discount','strong_discount','minimum_30_discount','resend_drop_percent','resend_score_increase','near_min_percent'):
         if not 0<=th[key]<=100:raise ValueError('Invalid deal threshold '+key)
