@@ -1,3 +1,4 @@
+name: ebag
 services:
   agent:
     build: .
