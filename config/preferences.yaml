@@ -132,7 +132,7 @@
     "policy_review_days": 30,
     "reviewed_store_commit": "2d865171801aba36d91ca62de3454d1898093484",
     "max_tracked_refresh": 100,
-    "on_release_change": "stop",
+    "on_release_change": "warn",
     "max_parse_error_ratio": 0.05,
     "category_seeds": [
       "https://ebag.bg/categories/1700/products/json",
