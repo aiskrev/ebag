@@ -144,13 +144,15 @@ class Pipeline(unittest.TestCase):
         row = next(r for r in ROWS if r['id'] == FISH)
 
         class Offline:
-            stats = {'listing_pages': 1, 'listing_truncated': False, 'tracked_pending': 0, 'missing_products': [], 'parse_errors': [], 'parse_error_count': 0, 'release_drift': None}
+            stats = {'listing_pages': 1, 'listing_truncated': False, 'offers_count': 1, 'unique_offers': 1, 'invalid_urls': 0, 'warnings': [],
+                     'parse_errors': [], 'parse_error_count': 0, 'release_drift': None}
 
             def __init__(self, c):
                 pass
 
-            def collect(self, tracked):
-                return [adapt(row, OBSERVED)]
+            def collect(self):
+                page = 'https://ebag.bg/categories/offers-products/json?page=1&mode=all_offers'
+                return [dict(adapt(row, OBSERVED), source='offers', source_url=page)]
 
             def save_state(self):
                 pass
@@ -177,7 +179,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(repo.conn.execute('SELECT status FROM notifications').fetchone()[0], 'sent')
         self.assertEqual(self.crawl(db)['emails'], 0, 'identical offer must not be sent twice')
         self.assertEqual(len(self.server.messages), 2, 'one deal and one digest, neither repeated')
-        self.assertIn('дневно резюме', self.server.messages[1]['Subject'])
+        self.assertIn('eBag оферти – дневен отчет', self.server.messages[1]['Subject'])
 
     def test_untrusted_certificate_is_refused_and_keeps_the_crawl(self):
         db = self.dir + '/db.sqlite3'

@@ -3,6 +3,7 @@ from datetime import datetime,timedelta
 from email.message import EmailMessage
 from typing import Protocol
 from .core import now,watch
+from .emails import FAILURE_TITLE,render_failure
 class NotSent(RuntimeError):
     """Failed before the message left us, so it is safe to try again on a later run."""
 class Provider(Protocol):
@@ -30,15 +31,33 @@ class SMTP:
 def recipients(c):
     return [x.strip() for x in (os.environ.get('NOTIFICATION_EMAIL') or ','.join(c['notification_email'])).split(',') if x.strip()]
 ALERTS={
- 'review_required':('Спрян е live режимът: нужен е преглед','eBag е пуснал нов release или прегледът е изтекъл. Прегледайте условията и parser-а, обновете config/preferences.yaml и рестартирайте контейнера.'),
- 'access_denied':('Магазинът отказа достъп','Получен е 401/403/429 или challenge. Агентът спря и няма да опитва отново днес. Не се заобикаля; проверете дали достъпът трябва да продължи.'),
- 'policy_stop':('Обходът е спрян от защитна проверка','Robots, schema drift или друга защита спря обхода. Нужна е проверка, преди да продължи.'),
- 'crawl_failed':('Дневният обход не успя','Всички опити за днес са изчерпани. Проверете логовете и изпълнете ebag run --send след поправка.'),
- 'parser_errors':('Обход с parser грешки','Валидните наблюдения са запазени, но email-ите за сделки са спрени за днес. Проверете дали схемата се е променила.'),
+ 'review_required':('eBag агент: Спрян е live режимът, нужен е преглед','Спрян (чака преглед)'),
+ 'access_denied':(FAILURE_TITLE,'Неуспешен обход'),
+ 'policy_stop':(FAILURE_TITLE,'Неуспешен обход'),
+ 'crawl_failed':(FAILURE_TITLE,'Неуспешен обход'),
+ 'parser_errors':('eBag агент: Обход с грешки при разчитане','Частично успешен обход'),
 }
+RUN='ebag run --send'
+def advice(kind,diag):
+    """A concrete next step: what failed, whether a retry helps, which command to run."""
+    status=diag.get('status');stage=diag.get('stage') or ''
+    if kind=='review_required':return 'Нов release или изтекъл 30-дневен преглед. Прегледайте robots, условията и отговорите на https://ebag.bg/offers, обновете crawl.policy_reviewed_at и crawl.reviewed_store_commit в config/preferences.yaml и рестартирайте контейнера; днешният обход тръгва сам.'
+    if kind=='access_denied':
+        wait=f" Сайтът поиска изчакване (Retry-After: {diag['retry_after']})." if diag.get('retry_after') else ''
+        return f'Сайтът ограничи или отказа достъп (HTTP {status or "challenge"}).{wait} Агентът не заобикаля ограничението и опитва отново утре. Ако се повтаря, увеличете crawl.interval_seconds.'
+    if kind=='parser_errors':return 'Валидните оферти са записани, но писма с оферти днес не се пращат. Ако се повтаря, схемата на отговора се е променила и parser-ът трябва да се провери.'
+    if status==404 and diag.get('kind')=='offers_page':
+        return f'Адресът, от който страницата https://ebag.bg/offers зарежда офертите, върна 404. Повторен опит без проверка няма смисъл. Отворете /offers в браузър, проверете заявката към офертите и след поправка изпълнете: {RUN}'
+    if diag.get('transient'):
+        return f'Временна грешка на сайта или мрежата. Повторният опит има смисъл: агентът опитва отново утре в 08:00. За днешните данни изпълнете: {RUN}'
+    return f'Грешката не е временна и ще се повтори без поправка. Етап: {stage or "неизвестен"}. След поправка изпълнете: {RUN}'
 def operator_alert(repo,c,provider,day,kind,detail):
     """Best effort, at most once per kind per day. The slot outcome is already saved."""
-    title,advice=ALERTS[kind];sent=0
+    title,state=ALERTS[kind];sent=0
+    diag=dict(detail) if isinstance(detail,dict) else {'error':str(detail)}
+    diag.setdefault('ts',now())
+    diag['transient_text']='Да, повторният опит има смисъл' if diag.get('transient') else 'Не, без поправка ще се повтори'
+    text,markup=render_failure(title,diag,advice(kind,diag),state)
     try:
         if hasattr(provider,'validate'):provider.validate()
     except Exception as exc:
@@ -46,8 +65,7 @@ def operator_alert(repo,c,provider,day,kind,detail):
     for recipient in recipients(c):
         fp=hashlib.sha256(json.dumps(['alert',day,kind]).encode()).hexdigest()
         if repo.conn.execute('SELECT 1 FROM notifications WHERE recipient=? AND message_hash=?',(recipient,fp)).fetchone():continue
-        lines=[advice,'Детайл: '+str(detail),'Това е служебно съобщение, не препоръка за покупка.']
-        try:provider.send(recipient,'eBag агент: '+title,'\n\n'.join(lines),'<html><body>'+''.join('<p>'+html.escape(x)+'</p>' for x in lines)+'</body></html>')
+        try:provider.send(recipient,title,text,markup)
         except Exception as exc:
             print(f'Operator alert failed ({kind}): {exc}',file=sys.stderr,flush=True);continue
         repo.conn.execute('INSERT INTO notifications(sent_at,notification_type,recipient,message_hash,status) VALUES(?,?,?,?,?)',(now(),'OPERATOR_ALERT',recipient,fp,'sent'));repo.conn.commit();sent+=1
