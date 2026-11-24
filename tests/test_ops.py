@@ -153,19 +153,16 @@ class FakeClient:
     records = []
 
     def __init__(self, c):
-        self.stats = {'listing_pages': 1, 'listing_truncated': False, 'tracked_pending': 0, 'missing_products': [], 'parse_errors': [], 'parse_error_count': 0, 'release_drift': None}
+        self.stats = {'listing_pages': 1, 'listing_truncated': False, 'offers_count': 3, 'unique_offers': 3, 'invalid_urls': 0, 'warnings': [],
+                      'parse_errors': [], 'parse_error_count': 0, 'release_drift': None}
 
-    def collect(self, tracked):
+    def collect(self):
         return list(self.records)
-
-    def save_state(self):
-        FakeClient.frontier_saved = True
 
 
 class RunFlow(TempRepo):
     def setUp(self):
         super().setUp()
-        FakeClient.frontier_saved = False
         self.output = self.folder.name + '/report.json'
         patcher = patch.object(cli, 'Client', FakeClient)
         patcher.start()
@@ -176,7 +173,8 @@ class RunFlow(TempRepo):
 
     def records(self, count=3):
         from ebag.ebag_source import adapt
-        return [adapt(row) for row in FIXTURE[:count]]
+        page = 'https://ebag.bg/categories/offers-products/json?page=1&mode=all_offers'
+        return [dict(adapt(row), source='offers', source_url=page) for row in FIXTURE[:count]]
 
     def last_run(self):
         repo = Repository(self.db)
@@ -189,7 +187,6 @@ class RunFlow(TempRepo):
             result = cli.run(C, self.db, send=True, output=self.output)
         self.assertEqual(result['status'], 'success')
         self.assertIn('SMTP_HOST', result['email_error'])
-        self.assertTrue(FakeClient.frontier_saved, 'frontier must advance even if mail is down')
         run = self.last_run()
         self.assertEqual(run['status'], 'success')
         self.assertEqual(json.loads(run['details_json'])['source'], 'live')
@@ -352,7 +349,7 @@ class Crawler(unittest.TestCase):
         client = Client(c, td + '/cache')
         pages = {'/robots.txt': 'User-agent: *\nDisallow: /nothing\n', '/terms': f'<script>window.STORE_COMMIT_HASH = "{terms_commit}";</script>'}
 
-        def fake_get(url, policy=False, fresh=False):
+        def fake_get(url, policy=False, fresh=False, **kind):
             if url.endswith('/terms'):
                 self.fresh = fresh
             for path, body in pages.items():
@@ -366,7 +363,7 @@ class Crawler(unittest.TestCase):
         self.rows = FIXTURE[:2]
         with tempfile.TemporaryDirectory() as td:
             with self.assertRaises(ReviewRequired):
-                self.client(td, 'abc123').collect()
+                self.client(td, 'abc123', on_release_change='stop').collect()
 
     def test_release_check_bypasses_cache(self):
         self.rows = FIXTURE[:2]

@@ -1,4 +1,4 @@
-import argparse,html,json,os,sys,time
+import argparse,html,json,logging,os,sys,time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -16,14 +16,14 @@ from .settings import load as config,load_env
 
 def run(c,db,source=None,send=False,output='data/report.json'):
     if send and source:raise RuntimeError('Sending email from imported/demo data is disabled')
-    repo=Repository(db); run_id=repo.start(); scanned=added=errors=0; items=[];samples=[]
+    repo=Repository(db); run_id=repo.start(); started=now(); scanned=added=errors=0; items=[];samples=[];warnings=[]
     try:
         client=None
         if source:raw=json.loads(Path(source).read_text())
         else:
-            tracked=[r[0] for r in repo.conn.execute('SELECT external_product_id FROM products WHERE active=1 ORDER BY last_seen_at ASC')]
-            client=Client(c);raw=client.collect(tracked)
-            errors=client.stats['parse_error_count'];samples=list(client.stats['parse_errors'])
+            client=Client(c);raw=client.collect()
+            errors=client.stats['parse_error_count']+client.stats['invalid_urls'];samples=list(client.stats['parse_errors'])
+            warnings=list(client.stats['warnings'])+drop_warning(repo,client.stats.get('offers_count'))
         if not isinstance(raw,list) or not raw:raise ValueError('Input must contain at least one observation')
         seen=set()
         for record in raw:
@@ -46,24 +46,35 @@ def run(c,db,source=None,send=False,output='data/report.json'):
         Path(output).parent.mkdir(parents=True,exist_ok=True)
         Path(output).write_text(json.dumps([{'product_id':pid,'product':p,'assessment':d} for pid,p,d in items],ensure_ascii=False,indent=2))
         render(items,str(Path(output).with_suffix('.html')),client.stats if client else None)
-        if client:client.save_state()
-        status='partial' if errors else 'success';emails=0;email_error=None
-        if send and not errors:
+        if client:client.stats['warnings']=warnings
+        # Anything doubtful makes the run partial: data is kept, deal mails are not sent.
+        status='partial' if errors or warnings else 'success';emails=0;email_error=None
+        if send and status=='success':
             # The crawl already succeeded: a mail problem must not erase that fact.
             try:emails=deliver(repo,items,c,SMTP())
             except Exception as exc:email_error=str(exc) or type(exc).__name__
         summaries=0
         if send:
-            # Sent on partial runs too: it reports the errors and proves the agent ran.
-            try:summaries=digest.send(repo,items,c,SMTP(),{'products':scanned,'errors':errors,'coverage':client.stats if client else None})
+            # Sent on partial runs too: it reports the problem and proves the agent ran.
+            try:summaries=digest.send(repo,items,c,SMTP(),{'products':scanned,'errors':errors,'status':status,'started_at':started,'warnings':warnings,'coverage':client.stats if client else None})
             except Exception as exc:email_error=email_error or str(exc) or type(exc).__name__
         repo.finish(run_id,status,scanned,added,errors,{'emails':emails,'summaries':summaries,'email_error':email_error,'source':'import' if source else 'live','coverage':client.stats if client else None,'parser_errors':samples[:20]})
         result={'run':run_id,'status':status,'products':scanned,'errors':errors,'emails':emails,'summaries':summaries,'email_error':email_error,'report':output}
         print(json.dumps(result),flush=True)
         return result
     except Exception as exc:
-        repo.conn.rollback();repo.finish(run_id,'failed',scanned,added,errors,{'error':str(exc)}); raise
+        exc.run_id=run_id
+        repo.conn.rollback();repo.finish(run_id,'failed',scanned,added,errors,{'error':str(exc),'diag':getattr(exc,'diag',None)}); raise
     finally:repo.conn.close()
+
+DROP_RATIO=.5
+def drop_warning(repo,count):
+    """Offers vary from day to day (3472 on 24.10, 4289 on 24.11), but halving
+    overnight points at a parser or page change, not at the shop."""
+    row=repo.conn.execute("SELECT json_extract(details_json,'$.coverage.offers_count') FROM crawl_runs WHERE status IN ('success','partial') AND json_extract(details_json,'$.coverage.offers_count') IS NOT NULL ORDER BY id DESC LIMIT 1").fetchone()
+    if row and row[0] and count is not None and count<DROP_RATIO*row[0]:
+        return [f'Офертите са {count}, а при последния успешен обход бяха {row[0]}. Спадът е необичайно голям.']
+    return []
 
 def test_lines(db,report,c):
     """Test mail shows real crawl output, marked so it cannot read as a deal alert."""
@@ -116,7 +127,11 @@ def main():
     parser.add_argument('--config',default='config/preferences.yaml');parser.add_argument('--db',default=os.environ.get('DATABASE_PATH','data/ebag.sqlite3'))
     parser.add_argument('--import-file');parser.add_argument('--send',action='store_true');parser.add_argument('--output',default='data/report.json')
     parser.add_argument('--resolve',type=int,help='notification id to reconcile');parser.add_argument('--as',dest='outcome',choices=['sent','failed'],help='verdict after checking SMTP logs')
+    parser.add_argument('--preview-file',help='summary: also write the HTML email to this file')
     a=parser.parse_args();load_env();c=config(a.config)
+    http=logging.getLogger('ebag.http');http.setLevel(logging.INFO)
+    if not http.handlers:
+        handler=logging.StreamHandler(sys.stderr);handler.setFormatter(logging.Formatter('%(message)s'));http.addHandler(handler)
     if a.import_file and a.db=='data/ebag.sqlite3':a.db='data/demo.sqlite3'
     Path(a.db).parent.mkdir(parents=True,exist_ok=True)
     try:dispatch(a,c)
@@ -158,12 +173,16 @@ def dispatch(a,c):
         last=repo.conn.execute("SELECT * FROM crawl_runs WHERE status IN ('success','partial') AND json_extract(details_json,'$.source')='live' ORDER BY id DESC LIMIT 1").fetchone()
         if not last:raise SystemExit('No successful live crawl yet')
         items=[(x['product_id'],x['product'],x['assessment']) for x in json.loads(Path(a.output).read_text())]
-        stats={'products':last['products_scanned'],'errors':last['parser_errors'],'coverage':json.loads(last['details_json']).get('coverage')}
-        if a.send:
-            try:print(f'Summaries sent: {digest.send(repo,items,c,SMTP(),stats)}')
-            except Exception as exc:raise SystemExit(f'Summary failed: {exc}')
-        else:print('\n\n'.join(digest.lines(items,c,stats,digest.history_days(repo),digest.local_today(c))))
-        repo.conn.close()
+        coverage=json.loads(last['details_json']).get('coverage') or {}
+        stats={'products':last['products_scanned'],'errors':last['parser_errors'],'status':last['status'],'started_at':last['started_at'],'warnings':coverage.get('warnings') or [],'coverage':coverage}
+        try:
+            if a.send:print(f'Summaries sent: {digest.send(repo,items,c,SMTP(),stats)}')
+            else:
+                subject,text,markup=digest.build(items,c,stats,digest.local_today(c))
+                if a.preview_file:Path(a.preview_file).write_text(markup,encoding='utf-8');print(f'HTML preview: {a.preview_file}')
+                print(subject+'\n\n'+text)
+        except Exception as exc:raise SystemExit(f'Summary failed: {exc}')
+        finally:repo.conn.close()
     elif a.command=='notifications':
         repo=Repository(a.db)
         if a.resolve is not None:

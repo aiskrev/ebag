@@ -122,7 +122,7 @@
     "seeds": [
       "https://ebag.bg/offers"
     ],
-    "max_pages": 50,
+    "max_pages": 250,
     "interval_seconds": 5,
     "timeout_seconds": 25,
     "user_agent": "eBagPriceIntelligence/0.2 (+personal price monitoring)",
@@ -131,34 +131,8 @@
     "policy_reviewed_at": "2026-11-04",
     "policy_review_days": 30,
     "reviewed_store_commit": "2d865171801aba36d91ca62de3454d1898093484",
-    "max_tracked_refresh": 100,
     "on_release_change": "warn",
-    "max_parse_error_ratio": 0.05,
-    "category_seeds": [
-      "https://ebag.bg/categories/1700/products/json",
-      "https://ebag.bg/categories/1701/products/json",
-      "https://ebag.bg/categories/1707/products/json",
-      "https://ebag.bg/categories/5752/products/json",
-      "https://ebag.bg/categories/1705/products/json",
-      "https://ebag.bg/categories/418/products/json",
-      "https://ebag.bg/categories/1744/products/json",
-      "https://ebag.bg/categories/1210/products/json",
-      "https://ebag.bg/categories/1805/products/json",
-      "https://ebag.bg/categories/600/products/json",
-      "https://ebag.bg/categories/601/products/json",
-      "https://ebag.bg/categories/1601/products/json",
-      "https://ebag.bg/categories/4392/products/json",
-      "https://ebag.bg/categories/3936/products/json",
-      "https://ebag.bg/categories/284/products/json",
-      "https://ebag.bg/categories/2934/products/json",
-      "https://ebag.bg/categories/3709/products/json",
-      "https://ebag.bg/categories/1095/products/json",
-      "https://ebag.bg/categories/3698/products/json",
-      "https://ebag.bg/categories/1548/products/json",
-      "https://ebag.bg/categories/533/products/json",
-      "https://ebag.bg/categories/532/products/json",
-      "https://ebag.bg/categories/536/products/json"
-    ]
+    "max_parse_error_ratio": 0.05
   },
   "schedule": {
     "max_attempts": 3,
@@ -166,7 +140,7 @@
   },
   "daily_summary": {
     "enabled": true,
-    "max_drops": 5
+    "max_rows": 50
   },
   "backup": {
     "enabled": true,

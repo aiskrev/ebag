@@ -95,23 +95,25 @@ def tick(repo, c, execute, local, alert=lambda kind, detail: None):
         return 'busy'
     except ReviewRequired as exc:
         put_slot(repo, day, 'blocked_review', attempts, key=review_key(c), detail=str(exc))
-        alert('review_required', str(exc))
+        alert('review_required', detail(exc, attempts))
         return log_failure('blocked_review', exc)
     except AccessDenied as exc:
         put_slot(repo, day, 'blocked_access', attempts, detail=str(exc))
-        alert('access_denied', str(exc))
+        alert('access_denied', detail(exc, attempts))
         return log_failure('blocked_access', exc)
     except PolicyError as exc:
         put_slot(repo, day, 'failed', attempts, detail=str(exc))
-        alert('policy_stop', str(exc))
+        alert('policy_stop', detail(exc, attempts))
         return log_failure('failed', exc)
     except Exception as exc:
-        if attempts < limits.get('max_attempts', 3):
+        # A 404 or other permanent HTTP error repeats identically, so it is not retried.
+        transient = getattr(exc, 'transient', True)
+        if transient and attempts < limits.get('max_attempts', 3):
             wait = timedelta(minutes=limits.get('retry_minutes', 60) * attempts)
             put_slot(repo, day, 'retry', attempts, (local + wait).isoformat(), detail=str(exc))
             return log_failure('retry', exc)
         put_slot(repo, day, 'failed', attempts, detail=str(exc))
-        alert('crawl_failed', str(exc))
+        alert('crawl_failed', detail(exc, attempts))
         return log_failure('failed', exc)
     status = result.get('status', 'success')
     put_slot(repo, day, status, attempts, detail=result.get('email_error'))
@@ -120,6 +122,18 @@ def tick(repo, c, execute, local, alert=lambda kind, detail: None):
     if result.get('email_error'):
         print('Email delivery failed: ' + result['email_error'], file=sys.stderr, flush=True)
     return status
+
+
+def detail(exc, attempts):
+    """What the operator mail shows. HTTP facts come from the crawler; no traceback."""
+    diag = dict(getattr(exc, 'diag', None) or {})
+    diag.setdefault('error', str(exc)[:300])
+    diag.setdefault('stage', type(exc).__name__)
+    diag['transient'] = bool(getattr(exc, 'transient', False))
+    diag['run_id'] = getattr(exc, 'run_id', None)
+    http = diag.get('attempts')
+    diag['attempts_text'] = f'{attempts} за деня' + (f'; последният направи {http} HTTP опита' if http else '')
+    return diag
 
 
 def log_failure(status, exc):
