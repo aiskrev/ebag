@@ -26,6 +26,37 @@ test_multipack (test_live_contract.LiveContract.test_multipack) ... ok
 test_schema_drift (test_live_contract.LiveContract.test_schema_drift) ... ok
 test_tomato_and_mandarines (test_live_contract.LiveContract.test_tomato_and_mandarines) ... ok
 test_variable_fish (test_live_contract.LiveContract.test_variable_fish) ... ok
+test_halving_against_last_successful_run_is_flagged (test_offers.DropCheck.test_halving_against_last_successful_run_is_flagged) ... ok
+test_no_history_means_no_comparison (test_offers.DropCheck.test_no_history_means_no_comparison) ... ok
+test_10_duplicates_are_removed_by_product_id (test_offers.Offers.test_10_duplicates_are_removed_by_product_id) ... ok
+test_10b_dedupe_key_priority (test_offers.Offers.test_10b_dedupe_key_priority) ... ok
+test_12_missing_current_price_is_counted_not_fatal (test_offers.Offers.test_12_missing_current_price_is_counted_not_fatal) ... ok
+test_18_empty_offers_is_a_failure (test_offers.Offers.test_18_empty_offers_is_a_failure) ... ok
+test_19_parser_regression_html_instead_of_json (test_offers.Offers.test_19_parser_regression_html_instead_of_json) ... ok
+test_19b_parser_regression_missing_results (test_offers.Offers.test_19b_parser_regression_missing_results) ... ok
+test_19c_most_rows_unparseable_stops_as_drift (test_offers.Offers.test_19c_most_rows_unparseable_stops_as_drift) ... ok
+test_1_success_follows_pagination_and_marks_provenance (test_offers.Offers.test_1_success_follows_pagination_and_marks_provenance) ... ok
+test_20_pagination_outside_offers_is_refused (test_offers.Offers.test_20_pagination_outside_offers_is_refused) ... ok
+test_20b_only_the_offers_endpoint_is_accepted (test_offers.Offers.test_20b_only_the_offers_endpoint_is_accepted) ... ok
+test_2_first_offers_page_404_fails_once_without_retry (test_offers.Offers.test_2_first_offers_page_404_fails_once_without_retry) ... ok
+test_3_pagination_404_keeps_what_was_found (test_offers.Offers.test_3_pagination_404_keeps_what_was_found)
+The list shrank between page 1 and page 2: not a reason to lose the day. ... ok
+test_3b_invalid_product_url_is_skipped_not_fatal (test_offers.Offers.test_3b_invalid_product_url_is_skipped_not_fatal) ... ok
+test_4_rate_limit_stops_with_retry_after (test_offers.Offers.test_4_rate_limit_stops_with_retry_after) ... ok
+test_5_temporary_500_then_success (test_offers.Offers.test_5_temporary_500_then_success) ... ok
+test_5b_persistent_503_is_transient_after_three_attempts (test_offers.Offers.test_5b_persistent_503_is_transient_after_three_attempts) ... ok
+test_6_timeouts_are_retried_then_reported (test_offers.Offers.test_6_timeouts_are_retried_then_reported) ... ok
+test_7_same_host_redirect_is_followed_and_recorded (test_offers.Offers.test_7_same_host_redirect_is_followed_and_recorded) ... ok
+test_7b_redirect_outside_ebag_is_refused (test_offers.Offers.test_7b_redirect_outside_ebag_is_refused) ... ok
+test_8_relative_next_link (test_offers.Offers.test_8_relative_next_link) ... ok
+test_9_absolute_next_link (test_offers.Offers.test_9_absolute_next_link) ... ok
+test_incident_stale_page_from_earlier_days_is_never_requested (test_offers.Offers.test_incident_stale_page_from_earlier_days_is_never_requested)
+The old crawler re-queued pages saved by earlier runs; one had stopped existing. ... ok
+test_low_coverage_is_a_warning (test_offers.Offers.test_low_coverage_is_a_warning) ... ok
+test_page_budget_is_reported (test_offers.Offers.test_page_budget_is_reported) ... ok
+test_request_log_has_no_secrets (test_offers.Offers.test_request_log_has_no_secrets) ... ok
+test_404_fails_on_first_attempt_with_a_diagnosis (test_offers.Scheduler.test_404_fails_on_first_attempt_with_a_diagnosis) ... ok
+test_transient_failure_is_still_retried (test_offers.Scheduler.test_transient_failure_is_still_retried) ... ok
 test_continuous_promotion (test_operational.Operational.test_continuous_promotion) ... ok
 test_expired_product_never_buy (test_operational.Operational.test_expired_product_never_buy) ... ok
 test_render_escapes_names (test_operational.Operational.test_render_escapes_names) ... ok
@@ -78,25 +109,32 @@ test_deal_reaches_the_server_once_over_verified_tls (test_smtp_tls.Pipeline.test
 test_operator_alert_uses_the_same_transport (test_smtp_tls.Pipeline.test_operator_alert_uses_the_same_transport) ... ok
 test_unreachable_server_is_not_marked_uncertain (test_smtp_tls.Pipeline.test_unreachable_server_is_not_marked_uncertain) ... ok
 test_untrusted_certificate_is_refused_and_keeps_the_crawl (test_smtp_tls.Pipeline.test_untrusted_certificate_is_refused_and_keeps_the_crawl) ... ok
-test_limits (test_summary.Configuration.test_limits) ... ok
+test_advice_differs_by_cause (test_summary.FailureMail.test_advice_differs_by_cause) ... ok
+test_failure_mail_is_a_facts_table_with_a_concrete_step (test_summary.FailureMail.test_failure_mail_is_a_facts_table_with_a_concrete_step) ... ok
+test_15_names_are_escaped (test_summary.OffersMail.test_15_names_are_escaped) ... ok
+test_16_table_has_the_columns_sorted_by_discount (test_summary.OffersMail.test_16_table_has_the_columns_sorted_by_discount) ... ok
+test_17_plain_text_fallback (test_summary.OffersMail.test_17_plain_text_fallback) ... ok
+test_18_no_offers_sends_a_diagnosis_not_an_empty_table (test_summary.OffersMail.test_18_no_offers_sends_a_diagnosis_not_an_empty_table) ... ok
+test_20_items_not_from_offers_block_the_report (test_summary.OffersMail.test_20_items_not_from_offers_block_the_report) ... ok
+test_blacklisted_offers_are_hidden_and_counted (test_summary.OffersMail.test_blacklisted_offers_are_hidden_and_counted) ... ok
+test_exact_disclaimer_and_header_facts (test_summary.OffersMail.test_exact_disclaimer_and_header_facts) ... ok
+test_long_urls_are_not_visible_text (test_summary.OffersMail.test_long_urls_are_not_visible_text) ... ok
+test_missing_values_say_no_data_never_none (test_summary.OffersMail.test_missing_values_say_no_data_never_none) ... ok
+test_partial_run_shows_its_warnings (test_summary.OffersMail.test_partial_run_shows_its_warnings) ... ok
+test_review_warning_near_expiry (test_summary.OffersMail.test_review_warning_near_expiry) ... ok
+test_rows_are_capped_to_stay_under_gmail_clipping (test_summary.OffersMail.test_rows_are_capped_to_stay_under_gmail_clipping) ... ok
+test_11_missing_old_price (test_summary.Prices.test_11_missing_old_price) ... ok
+test_12_missing_new_price (test_summary.Prices.test_12_missing_new_price) ... ok
+test_13_invalid_prices_never_produce_a_discount (test_summary.Prices.test_13_invalid_prices_never_produce_a_discount) ... ok
+test_14_discount_is_computed_from_valid_prices (test_summary.Prices.test_14_discount_is_computed_from_valid_prices) ... ok
+test_prices_have_two_decimals_and_a_comma (test_summary.Prices.test_prices_have_two_decimals_and_a_comma) ... ok
+test_store_figure_wins_when_present (test_summary.Prices.test_store_figure_wins_when_present) ... ok
 test_can_be_disabled (test_summary.Sending.test_can_be_disabled) ... ok
 test_failed_send_is_not_recorded_so_a_later_run_can_retry (test_summary.Sending.test_failed_send_is_not_recorded_so_a_later_run_can_retry) ... ok
-test_names_are_escaped_in_html (test_summary.Sending.test_names_are_escaped_in_html) ... ok
 test_once_per_local_day (test_summary.Sending.test_once_per_local_day) ... ok
-test_summary_does_not_trigger_deal_cooldown (test_summary.Sending.test_summary_does_not_trigger_deal_cooldown) ... ok
-test_counts_only_real_deals (test_summary.Text.test_counts_only_real_deals) ... ok
-test_drops_are_sorted_filtered_and_limited (test_summary.Text.test_drops_are_sorted_filtered_and_limited) ... ok
-test_first_day_has_nothing_to_compare (test_summary.Text.test_first_day_has_nothing_to_compare) ... ok
-test_mature_history_without_deals_says_so (test_summary.Text.test_mature_history_without_deals_says_so) ... ok
-test_never_reads_as_a_recommendation (test_summary.Text.test_never_reads_as_a_recommendation) ... ok
-test_one_day_of_history_is_singular (test_summary.Text.test_one_day_of_history_is_singular) ... ok
-test_parser_errors_are_reported (test_summary.Text.test_parser_errors_are_reported) ... ok
-test_review_expiry_warning_only_near_the_end (test_summary.Text.test_review_expiry_warning_only_near_the_end) ... ok
-test_units_are_never_compared_with_each_other (test_summary.Text.test_units_are_never_compared_with_each_other)
-Found on real data: 0.47 EUR/piece beat every price per kg. ... ok
-test_watchlist_uses_cheapest_and_hides_excluded (test_summary.Text.test_watchlist_uses_cheapest_and_hides_excluded) ... ok
+test_report_does_not_trigger_deal_cooldown (test_summary.Sending.test_report_does_not_trigger_deal_cooldown) ... ok
 
 ----------------------------------------------------------------------
-Ran 95 tests in 5.134s
+Ran 132 tests in 5.730s
 
 OK
